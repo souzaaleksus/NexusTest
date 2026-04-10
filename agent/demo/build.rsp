@@ -1,0 +1,16 @@
+-Q
+-B
+-W+
+-H+
+-$D-
+-$L-
+-$Y-
+-NU"Win32\Release"
+-NO"Win32\Release"
+-NB"Win32\Release"
+-NH"Win32\Release"
+-NS"System;System.Win;Vcl;Vcl.Imaging;Winapi;Data;Data.Win"
+-U"..\src"
+-I"..\src"
+-E"Win32\Release"
+DemoVCL.dpr

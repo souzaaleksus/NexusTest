@@ -1,0 +1,35 @@
+# Delphi build artifacts
+agent/demo/Win32/
+agent/demo/Win64/
+agent/demo/__history/
+agent/demo/__recovery/
+agent/demo/*.local
+agent/demo/*.identcache
+agent/demo/*.tvsconfig
+agent/demo/*.stat
+agent/demo/*.dsk
+agent/packages/Win32/
+agent/packages/Win64/
+agent/packages/__history/
+agent/packages/*.local
+agent/packages/*.identcache
+*.dcu
+*.~*
+*.bak
+*.map
+*.drc
+*.exe
+
+# TypeScript / Node
+mcp-server/node_modules/
+mcp-server/dist/
+mcp-server/*.log
+mcp-server/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Claude
+.claude/settings.local.json
