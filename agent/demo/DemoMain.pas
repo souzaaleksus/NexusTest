@@ -36,9 +36,16 @@ implementation
 procedure TFormMain.btnCalcularClick(Sender: TObject);
 var
   V: Double;
+  S: string;
+  FS: TFormatSettings;
 begin
   Inc(Contador);
-  V := StrToFloatDef(edValor.Text, 0);
+  FS := FormatSettings;
+  // Accept both '.' and ',' as decimal separator regardless of system locale
+  S := edValor.Text;
+  S := StringReplace(S, ',', FS.DecimalSeparator, [rfReplaceAll]);
+  S := StringReplace(S, '.', FS.DecimalSeparator, [rfReplaceAll]);
+  V := StrToFloatDef(S, 0, FS);
   lblResultado.Caption :=
     Format('%s: %.2f (clicks=%d)', [edNome.Text, V * 2, Contador]);
 end;

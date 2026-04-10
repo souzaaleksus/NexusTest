@@ -126,14 +126,112 @@ end;
 
 { ---------- serialization ---------- }
 
+// Forward: recursively serialize a TPersistent sub-object (Font, Anchors, etc.).
+// MaxSubDepth controls how deep nested TPersistents are expanded.
+function SerializePersistent(P: TPersistent; SubDepth, MaxSubDepth: Integer): TJSONValue; forward;
+
+// Serialize a single published property — handles scalars via SafeGetPropValue,
+// TPersistent descendants via SerializePersistent, and TStrings specifically
+// as an array of strings.
+function SerializeProperty(Instance: TObject; PropInfo: PPropInfo;
+  SubDepth, MaxSubDepth: Integer): TJSONValue;
+var
+  Obj: TObject;
+  PropName: string;
+  Strings: TStrings;
+  Arr: TJSONArray;
+  K: Integer;
+begin
+  PropName := string(PropInfo^.Name);
+  case PropInfo^.PropType^.Kind of
+    tkClass:
+      begin
+        try
+          Obj := GetObjectProp(Instance, PropInfo);
+        except
+          Obj := nil;
+        end;
+        if Obj = nil then
+          Exit(TJSONNull.Create);
+
+        { TStrings: serialize as array of strings }
+        if Obj is TStrings then
+        begin
+          Strings := TStrings(Obj);
+          Arr := TJSONArray.Create;
+          for K := 0 to Strings.Count - 1 do
+            Arr.Add(Strings[K]);
+          Exit(Arr);
+        end;
+
+        { TComponent: just reference by name to avoid infinite recursion
+          (DataSource, PopupMenu, etc. point to other components). }
+        if Obj is TComponent then
+          Exit(TJSONString.Create('@' + TComponent(Obj).Name));
+
+        { Other TPersistent: recurse into its published props }
+        if Obj is TPersistent then
+          Exit(SerializePersistent(TPersistent(Obj), SubDepth + 1, MaxSubDepth));
+
+        { Unknown class: just output class name }
+        Exit(TJSONString.Create('[' + Obj.ClassName + ']'));
+      end;
+  else
+    Result := TJSONString.Create(SafeGetPropValue(TComponent(Instance), PropName));
+  end;
+end;
+
+function SerializePersistent(P: TPersistent; SubDepth, MaxSubDepth: Integer): TJSONValue;
+var
+  Obj: TJSONObject;
+  PropList: PPropList;
+  PropCount, J: Integer;
+  PropInfo: PPropInfo;
+  PropName: string;
+begin
+  if P = nil then
+    Exit(TJSONNull.Create);
+
+  if SubDepth > MaxSubDepth then
+    Exit(TJSONString.Create('[' + P.ClassName + ']'));
+
+  Obj := TJSONObject.Create;
+  Obj.AddPair('__class', P.ClassName);
+  PropCount := GetPropList(P.ClassInfo, tkProperties, nil);
+  if PropCount > 0 then
+  begin
+    GetMem(PropList, SizeOf(PPropInfo) * PropCount);
+    try
+      GetPropList(P.ClassInfo, tkProperties, PropList);
+      for J := 0 to PropCount - 1 do
+      begin
+        PropInfo := PropList^[J];
+        PropName := string(PropInfo^.Name);
+        if PropInfo^.PropType^.Kind = tkMethod then Continue;
+        try
+          Obj.AddPair(PropName, SerializeProperty(P, PropInfo, SubDepth, MaxSubDepth));
+        except
+          on E: Exception do
+            Obj.AddPair(PropName, TJSONString.Create('<' + E.Message + '>'));
+        end;
+      end;
+    finally
+      FreeMem(PropList);
+    end;
+  end;
+  Result := Obj;
+end;
+
 function SerializeComponent(C: TComponent; Depth, MaxDepth: Integer): TJSONObject;
+const
+  SUB_MAX_DEPTH = 2;
 var
   I, J, PropCount: Integer;
   Children: TJSONArray;
   Props: TJSONObject;
   PropList: PPropList;
   PropInfo: PPropInfo;
-  PropName, PropValue: string;
+  PropName: string;
   Ctrl: TControl;
   Rect: TJSONObject;
 begin
@@ -154,7 +252,7 @@ begin
     Result.AddPair('bounds', Rect);
   end;
 
-  { Published properties via TypInfo }
+  { Published properties via TypInfo — scalars direct, TPersistent recursed }
   Props := TJSONObject.Create;
   PropCount := GetPropList(C.ClassInfo, tkProperties, nil);
   if PropCount > 0 then
@@ -166,10 +264,13 @@ begin
       begin
         PropInfo := PropList^[J];
         PropName := string(PropInfo^.Name);
-        { Skip method pointers — they're events, handled separately }
         if PropInfo^.PropType^.Kind = tkMethod then Continue;
-        PropValue := SafeGetPropValue(C, PropName);
-        Props.AddPair(PropName, PropValue);
+        try
+          Props.AddPair(PropName, SerializeProperty(C, PropInfo, 0, SUB_MAX_DEPTH));
+        except
+          on E: Exception do
+            Props.AddPair(PropName, '<' + E.Message + '>');
+        end;
       end;
     finally
       FreeMem(PropList);

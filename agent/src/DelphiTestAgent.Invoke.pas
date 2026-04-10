@@ -142,6 +142,8 @@ begin
   else if SameText(S, 'VK_TAB') then Result := VK_TAB
   else if SameText(S, 'VK_ESCAPE') then Result := VK_ESCAPE
   else if SameText(S, 'VK_SPACE') then Result := VK_SPACE
+  else if SameText(S, 'VK_BACK') then Result := VK_BACK
+  else if SameText(S, 'VK_DELETE') then Result := VK_DELETE
   else if SameText(S, 'VK_F1') then Result := VK_F1
   else if SameText(S, 'VK_F2') then Result := VK_F2
   else if SameText(S, 'VK_F3') then Result := VK_F3
@@ -152,18 +154,33 @@ begin
   else if SameText(S, 'VK_UP') then Result := VK_UP
   else if SameText(S, 'VK_LEFT') then Result := VK_LEFT
   else if SameText(S, 'VK_RIGHT') then Result := VK_RIGHT
-  else if Length(S) = 1 then Result := Ord(UpCase(S[1]))
   else Result := 0;
 end;
 
 function SendKey(const AKey: string): string;
 var
   VK: Word;
+  CharCode: Word;
+  IsChar: Boolean;
   SendError: string;
 begin
-  VK := ParseVirtualKey(AKey);
-  if VK = 0 then
-    Exit(Format('{"error":"unknown key: %s"}', [AKey]));
+  // Single printable character: use WM_CHAR so the edit control receives it
+  // exactly once. Posting WM_KEYDOWN/WM_KEYUP for a plain letter causes the
+  // edit to process it twice on some Delphi VCL versions (once via
+  // TranslateMessage synthesizing WM_CHAR, once via the explicit KEYDOWN).
+  IsChar := (Length(AKey) = 1) and
+            (not SameText(Copy(AKey, 1, 3), 'VK_'));
+  CharCode := 0;
+  VK := 0;
+
+  if IsChar then
+    CharCode := Ord(AKey[1])
+  else
+  begin
+    VK := ParseVirtualKey(AKey);
+    if VK = 0 then
+      Exit(Format('{"error":"unknown key: %s"}', [AKey]));
+  end;
 
   SendError := '';
   RunOnMainThread(
@@ -174,8 +191,13 @@ begin
       try
         HFocus := Winapi.Windows.GetFocus;
         if HFocus = 0 then HFocus := Application.Handle;
-        PostMessage(HFocus, WM_KEYDOWN, VK, 0);
-        PostMessage(HFocus, WM_KEYUP, VK, 0);
+        if IsChar then
+          PostMessage(HFocus, WM_CHAR, CharCode, 0)
+        else
+        begin
+          PostMessage(HFocus, WM_KEYDOWN, VK, 0);
+          PostMessage(HFocus, WM_KEYUP, VK, 0);
+        end;
       except
         on E: Exception do
           SendError := E.Message;
