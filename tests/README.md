@@ -1,5 +1,7 @@
 # NexusTest test scripts
 
+[English](README.md) | [Português (BR)](README.pt-BR.md) | [Español](README.es.md)
+
 Integration and end-to-end tests for the NexusTest stack (Delphi agent +
 MCP server + demo). All scripts run from this folder and assume the
 `mcp-server` has been built (`cd mcp-server && npm install && npx tsc`).

@@ -1,5 +1,7 @@
 # NexusTest
 
+[English](README.md) | [Português (BR)](README.pt-BR.md) | [Español](README.es.md)
+
 Runtime-embedded HTTP agent for Delphi VCL applications + generic MCP server
 so that AI assistants (Claude Code, Continue, etc.) can inspect and drive the
 UI of any VCL app via RTTI.
@@ -35,15 +37,14 @@ metadata. TSpeedButton, TcxGrid, TLbButton, custom frames — all queryable by
 NexusTest/
 ├── agent/          # Delphi Pascal — HTTP agent embedded in target app
 │   ├── src/        # DelphiTestAgent.*.pas units
-│   ├── packages/   # Runtime package (.dpk)
 │   └── demo/       # Minimal VCL demo app with agent enabled
 ├── mcp-server/     # TypeScript — generic MCP server
-│   ├── src/
-│   └── package.json
+│   └── src/
+├── tests/          # Integration tests for the whole stack
 └── docs/
-    ├── protocol.md     # HTTP contract agent <-> MCP
-    ├── integration.md  # Embedding in an existing Delphi project
-    └── examples/
+    ├── en/         # English documentation
+    ├── pt-BR/      # Portuguese (Brazilian)
+    └── es/         # Spanish
 ```
 
 ## Quick start (agent side)
@@ -79,6 +80,8 @@ curl http://localhost:8765/get/lb_salvar/Caption
 curl -X POST http://localhost:8765/click -d '{"component":"lb_salvar"}'
 ```
 
+See [docs/en/integration.md](docs/en/integration.md) for detailed setup.
+
 ## Quick start (MCP server side)
 
 Add to `.mcp.json`:
@@ -98,7 +101,10 @@ Add to `.mcp.json`:
 ```
 
 Claude Code then has tools: `delphi_dump`, `delphi_get`, `delphi_set`,
-`delphi_click`, `delphi_invoke`, `delphi_sendkey`, `delphi_find`.
+`delphi_click`, `delphi_invoke`, `delphi_focus`, `delphi_sendkey`,
+`delphi_components`, `delphi_health`.
+
+See [docs/en/protocol.md](docs/en/protocol.md) for the full HTTP contract.
 
 ## Security
 
