@@ -33,3 +33,8 @@ mcp-server/.env
 
 # Claude
 .claude/settings.local.json
+
+# Playwright credentials helper (never commit real PATs)
+mcp-server/playwright_github_pat.mjs
+github_login_error.png
+
