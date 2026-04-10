@@ -1,9 +1,16 @@
 // End-to-end smoke test for the NexusTest MCP server.
-// Spawns the compiled dist/index.js, sends JSON-RPC requests via stdio,
-// validates responses, and prints a pass/fail summary.
+// Spawns the compiled mcp-server/dist/index.js, sends JSON-RPC requests via
+// stdio, validates responses, and prints a pass/fail summary.
+//
+// Prerequisite: DemoVCL.exe (or any host with the agent embedded) listening
+// on http://127.0.0.1:8765.
 
 import { spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const MCP_SERVER = resolve(__dirname, '..', 'mcp-server', 'dist', 'index.js');
 
 const PASSED = [];
 const FAILED = [];
@@ -19,7 +26,7 @@ function check(label, cond, detail) {
 }
 
 async function run() {
-  const mcp = spawn('node', ['dist/index.js'], {
+  const mcp = spawn('node', [MCP_SERVER], {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: { ...process.env, DELPHI_AGENT_URL: 'http://127.0.0.1:8765' },
   });
@@ -151,13 +158,20 @@ async function run() {
     check('lblResultado shows Playwright result', result?.value?.includes('Playwright') && result?.value?.includes('2000'),
       JSON.stringify(result));
 
-    // 11. delphi_click again to increment counter
-    console.log('\n[11] delphi_click again');
+    // 11. delphi_click again to increment counter — relative check, since
+    // DemoVCL's Contador persists across runs (process not restarted).
+    console.log('\n[11] delphi_click again (relative counter check)');
+    const beforeMatch = (result?.value ?? '').match(/clicks=(\d+)/);
+    const beforeCount = beforeMatch ? parseInt(beforeMatch[1], 10) : -1;
     await callTool('delphi_click', { component: 'btnCalcular' });
     const result2 = extractJson(await callTool('delphi_get', {
       component: 'lblResultado', property: 'Caption',
     }));
-    check('clicks=2 after second click', result2?.value?.includes('clicks=2'), JSON.stringify(result2));
+    const afterMatch = (result2?.value ?? '').match(/clicks=(\d+)/);
+    const afterCount = afterMatch ? parseInt(afterMatch[1], 10) : -2;
+    check('counter incremented by 1',
+      afterCount === beforeCount + 1,
+      `before=${beforeCount} after=${afterCount} value='${result2?.value}'`);
 
     // 12. delphi_invoke OnClick explicitly
     console.log('\n[12] delphi_invoke OnClick on btnLimpar');

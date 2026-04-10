@@ -6,6 +6,11 @@
 // bring its window to the foreground via PowerShell + Win32 API.
 
 import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const MCP_SERVER = resolve(__dirname, '..', 'mcp-server', 'dist', 'index.js');
 
 const PAUSE_MS = 1500; // delay between actions so the human can watch
 
@@ -41,7 +46,7 @@ async function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 async function runDemo() {
   bringDemoToFront();
 
-  const mcp = spawn('node', ['dist/index.js'], {
+  const mcp = spawn('node', [MCP_SERVER], {
     stdio: ['pipe', 'pipe', 'inherit'],
     env: { ...process.env, DELPHI_AGENT_URL: 'http://127.0.0.1:8765' },
   });
